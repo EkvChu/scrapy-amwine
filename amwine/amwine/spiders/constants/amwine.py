@@ -12,8 +12,3 @@ XPATH_RPC = '//section/@data-id'
 XPATH_SECTION = '//a[@class="breadcrumbs__link"]/text()'
 XPATH_FOR_KEYS = '//span[@class="about-wine__param-title"]/text()'
 XPATH_FOR_VALUES = '//span[@class="about-wine__param-value"]//text()'
-
-
-
-
-
