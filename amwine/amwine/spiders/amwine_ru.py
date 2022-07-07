@@ -13,7 +13,7 @@ class AmwineSpider(scrapy.Spider):
     ]
 
     def start_requests(self):
-        cookies = {
+        cookies = {  # TODO: какой город? оставь коммент
             'AMWINE__IS_ADULT': 'Y',
             'AMWINE__REGION_CODE': 'rostov-na-donu',
             'AMWINE__REGION_ELEMENT_XML_ID': '61',
@@ -28,7 +28,7 @@ class AmwineSpider(scrapy.Spider):
     def parse_pages(self, response):
         url = response.url
         pr_all_data = response.xpath(XPATH_SCRIPT).re_first(r"window\.productsTotalCount = (.*);")
-        pr_all = int(pr_all_data)
+        pr_all = int(pr_all_data)  # TODO: что такое pr_all_data и pr_all? не понимаю нейминг переменных в этом методе
         pr_page_data = response.xpath(XPATH_SCRIPT).re_first(r"window\.productsPerServerPage = (.*);")
         pr_on_page = int(pr_page_data)
         pages_count = int(pr_all / pr_on_page)
@@ -41,7 +41,7 @@ class AmwineSpider(scrapy.Spider):
         json_data = response.xpath(XPATH_SCRIPT).re_first(r"window\.products = (.*);")
         json_obj = json.loads(json_data.replace('\'', '"'))
         urls = [d['link'] for d in json_obj]
-        print(len(urls))
+        print(len(urls))  # TODO: это лишнее, флудит в консоль
         for url in urls:
             url = response.urljoin(url)
             yield scrapy.Request(url, callback=self.parse)
@@ -53,17 +53,19 @@ class AmwineSpider(scrapy.Spider):
             current_price = float(current_price)
         except ValueError:
             current_price = 0.0
+        # TODO: попробуй логические блоки отделять пустыми строками
         original_price = response.xpath(XPATH_ORIG_PRICE).get('')
         original_price = original_price.strip()
         try:
             original_price = float(original_price)
         except ValueError:
             original_price = current_price
+
         try:
             sales = int(100 - (current_price / original_price * 100))
         except ZeroDivisionError:
             sales = 0
-        if sales > 0:
+        if sales > 0:  # TODO: сделай этот if-else в одну строку
             sales_tag = f"Скидка {sales}%"
         else:
             sales_tag = ""
@@ -74,14 +76,14 @@ class AmwineSpider(scrapy.Spider):
             }
 
     def get_stock(self, response):
-        is_stock = response.xpath(XPATH_STOCK).get()
+        is_stock = response.xpath(XPATH_STOCK).get()  # TODO: is_stock будет True, если товар не в стоке? XPath ведёт на not_in_stock
         current_price = response.xpath(XPATH_CURR_PRICE).get('')
         current_price = current_price.strip()
-        if is_stock is not None and len(current_price) < 1:
+        if is_stock is not None and len(current_price) < 1:  # TODO: очень сложно, мы 10 минут разбирались и не поняли, перепиши
             stock = False
         else:
             stock = True
-        if stock is True:
+        if stock is True:  # TODO: is True не обязателен. Перепиши в одну строку
             count = 1
         else:
             count = 0
@@ -91,16 +93,16 @@ class AmwineSpider(scrapy.Spider):
         }
 
     def get_metadata(self, response):
-        lst_of_keys = response.xpath(XPATH_FOR_KEYS).getall()
+        lst_of_keys = response.xpath(XPATH_FOR_KEYS).getall()  # TODO: почему бы не написать list_of_keys вместо lst_of_keys?
         lst_of_values = response.xpath(XPATH_FOR_VALUES).getall()
-        full_keys = []
+        full_keys = []  # TODO: можно 3 строки сделать в одну через list-comprehension
         for key in lst_of_keys:
             full_keys.append(key.strip())
-        full_values = []
+        full_values = []  # TODO: аналогично
         for value in lst_of_values:
             full_values.append(value.strip().replace('  ', ''))
-        full_values = [value for value in full_values if value]
-        dct = dict(zip(full_keys, full_values))
+        full_values = [value for value in full_values if value]  # TODO: очень красиво, молодец!
+        dct = dict(zip(full_keys, full_values))  # TODO: переименуй dct во что-то ещё, я не понимаю, что тут лежит
         description = response.xpath(XPATH_DESCRIPTION).getall()
         try:
             description = description[0].strip()
@@ -108,7 +110,7 @@ class AmwineSpider(scrapy.Spider):
             description = ''
         description_d = {'__description': description}
         article = response.xpath(XPATH_ARTICLE).get('')
-        article_d = {'АРТИКУЛ': article}
+        article_d = {'АРТИКУЛ': article}  # TODO: можно было и в article положить, вместо article_d
         dct.update(description_d)
         dct.update(article_d)
         return dct
@@ -120,12 +122,12 @@ class AmwineSpider(scrapy.Spider):
         brand = brand.strip()
         title = response.xpath(XPATH_TITLE).get().strip()
         rpc = response.xpath(XPATH_RPC).get()
-        section = []
+        section = []  # TODO: зачем 3 эти строки, если у тебя в response.xpath(XPATH_SECTION).getall() уже всё лежит
         for sect in response.xpath(XPATH_SECTION).getall():
-            section.append(sect)
-        if len(section) > 0:
-            section = section[-2:]
-        section = ";".join(section).replace('\n            ', '').split(";")
+            section.append(sect)  # TODO: мб стрипать здесь?
+        if len(section) > 0:  # TODO: можно сделать if section
+            section = section[-2:]  # TODO: а если секций в категории больше двух? попробуй взять всё, кроме первого [2:]. Не берём Главная страница и Каталог, остальное берём
+        section = ";".join(section).replace('\n            ', '').split(";")  # TODO: ты хотела сделать strip() можно было в list-conprehension для каждого элемента сделать
         item = {
             "timestamp": int(time.time()),  # Текущее время в формате timestamp
             "RPC": rpc,  # {str} Уникальный код товара
@@ -141,7 +143,7 @@ class AmwineSpider(scrapy.Spider):
             "stock": self.get_stock(response),
             "assets": {
                 "main_image": main_image,  # {str} Ссылка на основное изображение товара
-                "set_images": [],  # {list of str} Список больших изображений товара
+                "set_images": [],  # {list of str} Список больших изображений товара  # TODO: не собирается set_images,
                 "view360": [],  # {list of str}
                 "video": []  # {list of str}
             },
