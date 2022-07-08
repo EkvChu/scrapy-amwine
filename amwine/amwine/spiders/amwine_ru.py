@@ -26,9 +26,9 @@ class AmwineSpider(scrapy.Spider):
             yield scrapy.Request(url=url, cookies=cookies, callback=self.parse_pages)
 
     def parse_pages(self, response):
-        url = response.url
-        # сохраняем в products_all данные о количестве всех имеющихся продуктов в категории
-        products_all = response.xpath(XPATH_SCRIPT).re_first(r"window\.productsTotalCount = (.*);")
+        url = response.url  # TODO: объяви её поближе к месту использования
+        # сохраняем в products_all данные о количестве всех имеющихся продуктов в категории  # TODO: название переменной "все продукты", значит тут лежат все продукты?
+        products_all = response.xpath(XPATH_SCRIPT).re_first(r"window\.productsTotalCount = (.*);")  # TODO: комментарий лишний, можно назвать переменную иначе, например total_products_count (любое название, чтобы в имени было count/number)
         products_all = int(products_all)
         # сохраняем в products_on_page данные о количестве продуктов на каждой из страниц
         products_on_page = response.xpath(XPATH_SCRIPT).re_first(r"window\.productsPerServerPage = (.*);")
@@ -39,7 +39,7 @@ class AmwineSpider(scrapy.Spider):
             url_page = f'{url}{page_prefix}{page_count + 1}'
             yield scrapy.Request(url=url_page, callback=self.parse_request)
 
-    def parse_request(self, response):
+    def parse_request(self, response):  # TODO: название функции - парсим реквест? какой реквест мы парсим? мы парсим категорийную страницу
         json_data = response.xpath(XPATH_SCRIPT).re_first(r"window\.products = (.*);")
         json_obj = json.loads(json_data.replace('\'', '"'))
         urls = [d['link'] for d in json_obj]
@@ -67,10 +67,10 @@ class AmwineSpider(scrapy.Spider):
         except ZeroDivisionError:
             sales = 0
 
-        sales_tag = ''
+        sales_tag = ''  # TODO: отступ между try-except у sales и этим блоком необязателен, т.к. эта логика всё ещё к sales относится (но не принципиально)
         sales_tag = f"Скидка {sales}%" if sales > 0 else sales_tag
 
-        return {
+        return {  # TODO: лучше возвращай переменную, а не дикт в таком виде, будет более читаемо (по всему коду - аналогично, здесь я бы сделал price_data, т.к. функция так называется
                 "current": current_price,  # {float} Цена со скидкой, если скидки нет то = original
                 "original": original_price,  # {float} Оригинальная цена
                 "sale_tag": sales_tag  # {str} Если есть скидка на товар то необходимо вычислить процент скидки и записать формате: "Скидка {}%"
@@ -79,7 +79,7 @@ class AmwineSpider(scrapy.Spider):
     def get_stock(self, response):
         not_stock = response.xpath(XPATH_STOCK).get()
         current_price = response.xpath(XPATH_CURR_PRICE).get()
-        if not_stock and not current_price:
+        if not_stock and not current_price:  # TODO: гораздо лучше, правда для человека не в контексте есть противоречие, т.е. если цена есть, то и сток есть (это правда, но я бы оставил коммент, что у товара не в стоке нет цены)
             stock = False
         else:
             stock = True
@@ -91,39 +91,39 @@ class AmwineSpider(scrapy.Spider):
         }
 
     def get_metadata(self, response):
-        list_keys = response.xpath(XPATH_FOR_KEYS).getall()
+        list_keys = response.xpath(XPATH_FOR_KEYS).getall()  # TODO: можно и без list было, просто keys / values, множественное число в названии указывает на то, что объект итерируемый
         list_values = response.xpath(XPATH_FOR_VALUES).getall()
-        full_keys = [key.strip() for key in list_keys]
-        full_values = [value.strip().replace('  ', '') for value in list_values]
+        full_keys = [key.strip() for key in list_keys]  # TODO: не бойся возвращать результат в те же переменные, откуда их взяла - list_keys звучит лучше, чем full_keys (почему фулл? а до этого они не фулл были?)
+        full_values = [value.strip().replace('  ', '') for value in list_values]  # TODO: аналогично
         full_values = [value for value in full_values if value]
-        dct_metadata = dict(zip(full_keys, full_values))
+        dct_metadata = dict(zip(full_keys, full_values))  # TODO: не очень нравится эти dct/lst в названии, можно было просто metadata назвать
         description = response.xpath(XPATH_DESCRIPTION).getall()
 
         try:
-            description = description[0].strip()
+            description = description[0].strip()  # TODO: если берёшь нулевой элемент, то почему бы просто не взять .get() с дефолтом, а не .getall()?
         except IndexError:
             description = ''
 
-        description_d = {'__description': description}
+        description_d = {'__description': description}  # TODO: если в конце всё равно наполняешь дикт с метадатой, то можно было просто сделать metadata['__description': description]
         article = response.xpath(XPATH_ARTICLE).get('')
         article = {'АРТИКУЛ': article}
         dct_metadata.update(description_d)
         dct_metadata.update(article)
-        return dct_metadata
+        return dct_metadata  # TODO: тут молодец, возвращаешь переменную, которая ссылается на дикт, а не сам дикт
 
     def parse(self, response):
         main_image = response.xpath(XPATH_IMAGE).get()
         main_image = response.urljoin(main_image)
         brand = response.xpath(XPATH_BRAND).get('')
         brand = brand.strip()
-        title = response.xpath(XPATH_TITLE).get().strip()
+        title = response.xpath(XPATH_TITLE).get().strip()  # TODO: а если title будет None? Укажи дефолт перед стрипом
         rpc = response.xpath(XPATH_RPC).get()
-        section = response.xpath(XPATH_SECTION).getall()
+        section = response.xpath(XPATH_SECTION).getall()  # TODO: тут список секций (sections, а переменная в единственном числе)
         section = [sect.strip() for sect in section]
         if section:
             section = section[2:]
 
-        item = {
+        item = {  # TODO: укажи комменты справа от строк с диктами, т.к. ниже они выглядят просто как закомменченные строки
             "timestamp": int(time.time()),  # Текущее время в формате timestamp
             "RPC": rpc,  # {str} Уникальный код товара
             "url": response.url,  # {str} Ссылка на страницу товара
