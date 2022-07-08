@@ -84,7 +84,7 @@ class AmwineSpider(scrapy.Spider):
         else:
             stock = True
         count = 0
-        count += 1 if stock else count
+        count += 1 if stock else count  # TODO: можно было сделать просто 1 if stock else 0, без строки выше
         return {
             "in_stock": stock,
             "count": count
